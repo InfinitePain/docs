@@ -1,0 +1,19 @@
+---
+title: Guides
+description: List of all available guides.
+sidebar: { attrs: {
+"indexPage": true
+}}
+---
+
+import {LinkCard, CardGrid} from '@astrojs/starlight/components';
+import {GetDocs} from '../../utils/GetDocs';
+
+{GetDocs({ sortBy: 'title', order: 'asc' }).map(doc => (
+<LinkCard
+    key={doc.slug}
+    title={doc.title}
+    description={doc.description}
+    href={`/guides/${doc.slug}/`}
+/>
+))}

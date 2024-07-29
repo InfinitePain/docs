@@ -1,0 +1,89 @@
+---
+title: Gnome
+description: How I like to set up Gnome
+published: 2024-07-29
+---
+
+## Packages
+
+```sh
+sudo paru -S gnome \
+               gnome-tweaks \
+               gnome-terminal \
+               gnome-tweaks \
+               xdg-desktop-portal \
+               xdg-desktop-portal-gnome \
+               gnome-browser-connector
+```
+## Lock Screen
+
+Since GNOME 3.16, GNOME Shell themes are now stored as binary files which means we need to compile the theme with the image we want.
+
+First you need to extract the existing GNOME Shell theme to a directory. You can use the fallowing script for that:
+
+```sh
+#!/bin/sh
+workdir=${HOME}
+gst=/usr/share/gnome-shell/gnome-shell-theme.gresource
+output_dir="${workdir}/gst"
+
+mkdir -p "$output_dir/theme"
+
+echo '<?xml version="1.0" encoding="UTF-8"?>' >"$output_dir/gnome-shell-theme.gresource.xml"
+echo '<gresources><gresource>' >>"$output_dir/gnome-shell-theme.gresource.xml"
+
+for r in $(gresource list $gst); do
+  new_file_path="${output_dir}/${r#/org/gnome/shell/}"
+  mkdir -p "$(dirname "$new_file_path")"
+  gresource extract $gst "$r" > "$new_file_path"
+  echo "<file>${new_file_path#$output_dir/}</file>" >> "${output_dir}/gnome-shell-theme.gresource.xml"
+done
+
+echo "<file>filename</file>" >>"$output_dir/gnome-shell-theme.gresource.xml"
+echo '</gresource></gresources>' >>"$output_dir/gnome-shell-theme.gresource.xml"
+```
+
+Now there should be a folder named gst should be created in your home directory. Navigate to the created directory. You should find that the theme files have been extracted under theme folder and a file called `gnome-shell-theme.gresource.xml` we need to edit this file. Find the line that looks like `<file>filename</file>`. Replace the filename with the path to your desired image.
+
+We also need to edit two extra files: `gnome-shell-dark.css` and `gnome-shell-light.css`. You can find them under theme folder where we extract the theme. In both file change the `#lockDialogGroup` definition as fallows:
+
+```text
+#lockDialogGroup {
+  background: url(blobs-l.svg);
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.login-dialog {
+  background-color: transparent;
+}
+```
+
+Next, compile the theme using the fallowing command from the gst folder we have created:
+
+```sh
+glib-compile-resources gnome-shell-theme.gresource.xml
+```
+
+Then, copy the resulting `gnome-shell-theme.gresource` file to the `/usr/share/gnome-shell` directory. It's highly recommended to copy the old gresource file to somewhere in case if something goes wrong.
+
+Finally, restart `gdm.service` and you should find that it is using your preferred background image. Note that you need to repeat this process each time gnome-shell package gets updated.
+
+## Extensions
+
+To install extensions you need browser extension and `gnome-browser-connector(AUR)` than you can install extensions from gnome extensions website. Fallowing extensions are recommended:
+
+- Bluetooth Quick Connect
+Recommended settings are: Show reconnect button, Show battery value, Show battery icon
+- Blur my Shell
+- Dash to Dock
+Recommended settings:
+- Position and size: Position on sreen set to Left, Intelligent autohide is on with Dodge all windows setting and animation duration set to 0.150
+- Launchers: Show volumes and devices set to only if mounted
+- Behavior: Click action set to Minimize or show previews
+- Appearance: Customize opacity set to Dynamic
+- Brightness control using ddcutil
+- spotify-tray
+- Tray Icons: Reloaded
+- Tiling Assistant

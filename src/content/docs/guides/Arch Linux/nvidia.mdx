@@ -1,0 +1,102 @@
+---
+title: NVIDIA
+description: Configuring NVIDIA GPUs for Linux
+published: 2024-07-29
+---
+
+Optimus does not function out of the box and needs some things to be setted up.
+Start with installing the following packages:
+
+- linux-headers
+- mesa
+- lib32-mesa
+- xf86-video-amdgpu (only needed for integraded amd gpu),
+- nvidia
+- nvidia-utils
+- lib32-nvidia-utils
+- nvidia-settings
+- switcheroo-control (needs `switcheroo-control.service` to be enabled).
+- nvtop
+
+```sh
+sudo pacman -S linux-headers mesa lib32-mesa xf86-video-amdgpu nvidia nvidia-utils lib32-nvidia-utils nvidia-settings switcheroo-control nvtop
+```
+
+To enable DRM (Dynamic Rendering Manager) kernel mode setting. Kernel module paramaters should be edited. Append to your bootloader options these two parameters: `nvidia-drm.modeset=1` and `fbdev=1`.
+
+To ensure it is loaded at the earliest possible occasion you should add nvidia, nvidia_modeset, nvidia_uvm and nvidia_drm to the initramfs. Find the `MODULES=()` line in `/etc/mkinitcpio.conf`and update it with the parameters.
+
+Example:
+
+```text
+MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)
+```
+
+It's also necessary to remove `kms` from `HOOKS` array in `/etc/mkinitcpio.conf`. Finally we need to regenerate the initramfs which can be done with:
+
+```sh
+sudo mkinitcpio -P
+```
+
+After rebooting the system you can launch apps using dGPU by right clicking and using `Launch using Dedicated Graphics Card` option from menu.
+
+There is only one caviat which is each time you update NVIDIA drivers initramfs mus be updated. You can automatize this with a pacman hook.
+Create /etc/pacman.d/hooks/nvidia.hook with this contents:
+
+```text
+[Trigger]
+Operation=Install
+Operation=Upgrade
+Operation=Remove
+Type=Package
+Target=nvidia
+Target=linux
+# Change the linux part above if a different kernel is used
+
+[Action]
+Description=Update NVIDIA module in initcpio
+Depends=mkinitcpio
+When=PostTransaction
+NeedsTargets
+Exec=/bin/sh -c 'while read -r trg; do case $trg in linux*) exit 0; esac; done; /usr/bin/mkinitcpio -P'
+```
+
+Generally no configuration is needed for Ampere as this is enabled by default. For some Ampere users, udev rules may be necessary. The following udev rules are needed:
+
+`/etc/udev/rules.d/80-nvidia-pm.rules`
+
+```text
+# Enable runtime PM for NVIDIA VGA/3D controller devices on driver bind
+ACTION=="bind", SUBSYSTEM=="pci", ATTR{vendor}=="0x10de", ATTR{class}=="0x030000", TEST=="power/control", ATTR{power/control}="auto"
+ACTION=="bind", SUBSYSTEM=="pci", ATTR{vendor}=="0x10de", ATTR{class}=="0x030200", TEST=="power/control", ATTR{power/control}="auto"
+
+# Disable runtime PM for NVIDIA VGA/3D controller devices on driver unbind
+ACTION=="unbind", SUBSYSTEM=="pci", ATTR{vendor}=="0x10de", ATTR{class}=="0x030000", TEST=="power/control", ATTR{power/control}="on"
+ACTION=="unbind", SUBSYSTEM=="pci", ATTR{vendor}=="0x10de", ATTR{class}=="0x030200", TEST=="power/control", ATTR{power/control}="on"
+```
+
+together with the following module parameters:
+
+`/etc/modprobe.d/nvidia-pm.conf`
+
+```text
+options nvidia "NVreg_DynamicPowerManagement=0x02"
+```
+
+Alternatively, you can install nvidia-prime-rtd3pm(AUR) which provides these two configuration files.
+
+We also need to enable `nvidia-persistenced.service` to avoid the kernel tearing down the device state whenever the NVIDIA device resources are no longer in use.
+
+Even without enabling Dynamic Power Management, offload rendering of applications is required.
+
+To run an application offloaded to the NVIDIA GPU with Dynamic Power Management enabled, add the following environment variables:
+
+```sh
+__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia command
+```
+
+When using on a Steam game, the launcher command line can be set to:
+
+```sh
+__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia %command%
+```

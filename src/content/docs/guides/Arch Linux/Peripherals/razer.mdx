@@ -1,0 +1,20 @@
+---
+title: Razer
+description: Configuring Razer devices for Linux
+published: 2024-07-29
+---
+
+Razer drivers are not included in the base kernel so it must be integrated trough DKMS installing fallowing packages should be enough.
+
+- linux-headers or/and linux-lts-headers
+- openrazer-daemon
+- polychromatic (AUR)
+
+The GUI can be invoked using `polychromatic-controller`. There is also CLI version if needed which can is called `polychromatic-cli`. Both of them are installed with polychromatic package so no need extra installing.
+
+User must be added to `plugdev` group in order this to function.
+
+```bash
+sudo groupadd plugdev
+sudo usermod -aG plugdev emirhan
+```

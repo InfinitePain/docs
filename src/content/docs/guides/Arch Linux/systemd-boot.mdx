@@ -1,0 +1,92 @@
+---
+title: systemd-boot
+description: Configuring simple UEFI bootloader systemd-boot
+published: 2024-07-29
+---
+
+import { Aside, FileTree, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Systemd-boot is a simple UEFI boot manager. It is very easy to configure and use and configured through single configuration file.
+
+<Aside type="tip">
+If you are looking for a bootloader to directly boot from Btrfs snapshots, check out [GRUB](/guides/arch-linux/grub).
+</Aside>
+
+## Configuring systemd-boot
+
+Before we start configuring systemd-boot, we need to run the fallowing command:
+
+```sh
+bootctl install
+```
+
+This will create the necessary structure with the efi binary needed to boot the system.
+
+We can now create the main configuration file for systemd-boot.
+
+```sh frame="terminal" title="/boot/loader/loader.conf"
+default  arch.conf
+timeout  1
+console-mode max
+editor   no
+```
+
+If you are using UKIs you don't need further configuration, systemd-boot will automatically detect them. Otherwise we need to create the entry files for the kernels. Below you can find couple of example entries.
+
+<Tabs>
+    <TabItem label="arch.conf">
+        ```text frame="terminal" title="/boot/loader/entries/arch.conf"
+        title Arch Linux
+        linux /vmlinuz-linux
+        initrd /initramfs-linux.img
+        options root="LABEL=Arch OS" rootflags=subvol=@ rw nvidia-drm.modeset=1 quiet splash resume=UUID="8c2aebb8-7ec0-4602-bdb3-e4bcc8c22e19" resume_offset=533760
+        ```
+    </TabItem>
+    <TabItem label="arch-fallback.conf">
+        ```text frame="terminal" title="/boot/loader/entries/arch-fallback.conf"
+        title Arch Linux
+        linux /vmlinuz-linux
+        initrd /initramfs-linux-fallback.img
+        options root="LABEL=Arch OS" rootflags=subvol=@ rw quiet
+        ```
+    </TabItem>
+    <TabItem label="arch-lts.conf">
+        ```text frame="terminal" title="/boot/loader/entries/arch-lts.conf"
+        title Arch Linux
+        linux /vmlinuz-linux-lts
+        initrd /initramfs-linux-lts.img
+        options root="LABEL=Arch OS" rootflags=subvol=@ rw quiet
+        ```
+    </TabItem>
+    <TabItem label="arch-lts-fallback.conf">
+        ```text frame="terminal" title="/boot/loader/entries/arch-lts-fallback.conf"
+        title Arch Linux
+        linux /vmlinuz-linux-lts
+        initrd /initramfs-linux-lts-fallback.img
+        options root="LABEL=Arch OS" rootflags=subvol=@ rw quiet
+        ```
+    </TabItem>
+</Tabs>
+
+Final file structure should look like this:
+
+<FileTree>
+    - /boot
+        - EFI/
+        - initramfs-linux-fallback.img
+        - initramfs-linux.img
+        - initramfs-linux-lts-fallback.img
+        - initramfs-linux-lts.img
+        - loader
+            - entries
+                - arch.conf
+                - arch-fallback.conf
+                - arch-lts.conf
+                - arch-lts-fallback.conf
+            - entries.srel
+            - loader.conf
+            - random-seed
+        - syslinux/
+        - vmlinuz-linux
+        - vmlinuz-linux-lts
+</FileTree>

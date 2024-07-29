@@ -1,0 +1,30 @@
+---
+title: GRUB
+description: Configuring the GRUB bootloader
+published: 2024-07-29
+---
+
+pacman -S grub
+pacman -S efibootmgr
+
+
+grub-install --target=x86_64-efi --efi-directory=esp --bootloader-id=GRUB
+
+grub-mkconfig -o /boot/grub/grub.cfg
+or
+arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
+
+
+sudo nano /etc/default/grub
+Find the line that starts with GRUB_CMDLINE_LINUX and add "root=UUID=your_root_partition_UUID" to it, replacing
+"your_root_partition_UUID" with the actual UUID of your root partition.
+example:
+
+GRUB_DEFAULT=0
+GRUB_TIMEOUT=5
+GRUB_DISTRIBUTOR="Arch"
+GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet initrd=/amd-ucode.img root=UUID=your_root_partition_UUID"
+You can also use the ls -l /dev/disk/by-uuid/ command to find the UUID of your root partition.
+
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+reboot and check

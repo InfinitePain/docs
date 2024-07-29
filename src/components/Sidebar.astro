@@ -1,0 +1,16 @@
+---
+import type {Props} from '@astrojs/starlight/props';
+import Default from '@astrojs/starlight/components/MobileMenuFooter.astro';
+import SidebarSublist from './SidebarSublist.astro';
+
+const {sidebar} = Astro.props;
+---
+
+
+<SidebarSublist sublist={sidebar} />
+
+<div class="md:sl-hidden">
+    <Default {...Astro.props}>
+        <slot/>
+    </Default>
+</div>

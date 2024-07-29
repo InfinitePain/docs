@@ -1,0 +1,49 @@
+---
+import type {Props} from '@astrojs/starlight/props';
+import Default from '@astrojs/starlight/components/PageTitle.astro';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCalendarAlt, faSyncAlt } from '@fortawesome/free-solid-svg-icons';
+import '@fortawesome/fontawesome-svg-core/styles.css';
+
+const {published} = Astro.props.entry.data;
+const {lang, lastUpdated} = Astro.props;
+---
+
+<Default {...Astro.props}>
+    <slot/>
+</Default>
+
+<div class="header-meta sl-flex">
+    {published && (
+            <p id="_published">
+                <FontAwesomeIcon icon={faCalendarAlt} style={{ fontSize: '1rem' }} />
+                <time datetime={published.toISOString()}>
+                    {published.toLocaleDateString(lang, { dateStyle: 'medium', timeZone: 'UTC' })}
+                </time>
+            </p>
+    )}
+    {published && lastUpdated && <span class="separator">|</span>}
+    {lastUpdated && (
+            <p id="_lastUpdated">
+                <FontAwesomeIcon icon={faSyncAlt} style={{ fontSize: '1rem' }} />
+                <time datetime={lastUpdated.toISOString()}>
+                    {lastUpdated.toLocaleDateString(lang, { dateStyle: 'medium', timeZone: 'UTC' })}
+                </time>
+            </p>
+    )}
+</div>
+
+<style>
+    .header-meta {
+        display: flex;
+        gap: 0.75rem 0.25rem;
+        flex-wrap: wrap;
+        margin-top: 1rem;
+        font-size: var(--sl-text-sm);
+        color: var(--sl-color-gray-3);
+        align-items: center;
+    }
+    .separator {
+        margin: 0 0.5rem;
+    }
+</style>

@@ -1,0 +1,31 @@
+---
+title: Welcome to InfinitePain's Documentation
+description: Get started building your docs site with Starlight.
+template: splash
+editUrl: false
+lastUpdated: false
+hero:
+  tagline: Technical Setup and Configuration Notebook.
+  image:
+    file: ../../assets/houston.webp
+  actions:
+    - text: View All Guides
+      link: /guides/
+      icon: right-arrow
+      variant: primary
+pagination: false
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+import { GetDocs } from '../utils/GetDocs';
+
+## Latest
+
+{GetDocs({ limit: 5, sortBy: 'published', order: 'desc' }).map(doc => (
+<LinkCard
+    key={doc.slug}
+    title={doc.title}
+    description={doc.description}
+    href={`/guides/${doc.slug}/`}
+/>
+))}
