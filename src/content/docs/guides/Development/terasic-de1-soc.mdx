@@ -1,0 +1,203 @@
+---
+title: Development with Terasic DE1-SoC
+description: Configuring the development environment for Terasic DE1-SoC
+published: 2024-08-01
+---
+
+import { Steps, Aside } from '@astrojs/starlight/components';
+
+As a part of the [YellowPirat](https://github.com/YellowPirat) project, we were using the Terasic DE1-SoC board for the development of the project. In this guide, you will find how we have configured the development environment for the board.
+
+## Prerequisites
+
+- Debian Linux
+- Quartus 23.1
+- GHDL and GTKWave
+
+### Debian Linux
+
+It is recommended to use Debian Linux for the development of the project as the tools are tested on Debian and you might face issues on other distributions. There is two different ways to achieve this:
+
+#### VM/Bare Metal
+
+1. Install Debian on a VM or on a bare metal machine. The ISO can be downloaded from the [official Debian website](https://www.debian.org/distrib/).
+2. After installation, proceed with the next steps.
+
+#### Distrobox
+
+If you are already using a Linux as your main OS, you can use Distrobox to create a Debian container. The Distrobox makes it easy to integrate GUI applications with the host OS. It also tightly integrates the container with the host OS. You can find the installation instructions on the [official Distrobox website](https://distrobox.it/). Here is a quick guide for Arch Linux.
+
+<Steps>
+    1. Configure a containerization system like [Podman](https://wiki.archlinux.org/title/Podman) or Docker.
+
+    2. Install Distrobox.
+
+        ```sh
+        sudo pacman -S distrobox
+        ```
+
+    3. Create a new container.
+
+        ```sh
+        distrobox create --image debian:12.6 -n YellowPirat --nvidia
+        ```
+        <Aside type="note">
+            You can replace `YellowPirat` with any name you want. If you change the name, make sure to replace it in the following steps.
+
+            The NVIDIA flag is optional and should be used if you have an NVIDIA GPU.
+        </Aside>
+
+    4. Enter the container.
+
+        ```sh
+        distrobox enter YellowPirat
+        ```
+
+    5. Install necessary packages for container.
+
+        ```sh
+        sudo apt update
+        sudo apt upgrade -y
+        sudo apt install nano git dbus-x11 policykit-1 fonts-dejavu-core alsa-utils libxft2 libxext6 libxrender1 libsm6 libxi6 libxtst6 libgtk-3-0 libqt5widgets5
+        ```
+        <Aside type="note">
+            It's possible that not all packages are needed, but these were suggested by ChatGPT to resolve issues with running Quartus.
+        </Aside>
+</Steps>
+
+Now you should have a Debian container ready to use. You can enter the container by running `distrobox enter YellowPirat` and exit simply by running `exit`.
+
+#### Install Required Packages
+
+After you have installed Debian we need to install some packages in order to work with the board. These can be installed by running the fallowing command.
+
+```sh
+sudo sudo apt install ghdl gtkwave gcc-arm-linux-gnueabihf bison flex libssl-dev bc linux-source-6.1 debootstrap binfmt-support qemu-user-static
+sudo update-binfmts --enable qemu-arm
+```
+
+### Quartus 23.1
+
+Quartus is the software used to program the FPGA on the board. You can install it like this:
+
+<Steps>
+    1. Add the repository.
+
+        ```sh
+        echo "deb [arch=i386,amd64 trusted=yes lang=none] http://www.tha.de/homes/beckmanf/public/repository ./" | sudo tee /etc/apt/sources.list.d/quartus.list
+        ```
+
+    2. Update the package list.
+
+        ```sh
+        sudo apt update
+        ```
+
+    3. Install Quartus.
+
+        ```sh
+        sudo apt install quartus23
+        ```
+
+    4. Add the Quartus to the path.
+
+        ```sh
+        echo "export PATH=$PATH:/opt/altera/23.1/quartus/bin" >> ~/.bashrc
+        source ~/.bashrc
+        ```
+
+        <Aside type="note">
+            If using Distrobox, your bashrc file is shared with the host OS. So it's better to add the path to container only.
+
+            ```sh
+            sudo echo "export PATH=$PATH:/opt/altera/23.1/quartus/bin" | sudo tee /etc/profile.d/quartus.sh
+            source /etc/profile.d/quartus.sh
+            ```
+        </Aside>
+</Steps>
+
+Quartus should be installed and ready to use. You can start it by running `quartus` in the terminal.
+
+### GHDL and GTKWave
+
+GHDL and GTKWave are used to simulate the VHDL code. These can be installed like so:
+
+```sh
+sudo apt install ghdl gtkwave
+```
+
+## Setup Development Environment
+
+Now that you have installed all the necessary tools, we can start setting up the necessary bits to be able to develop for the board.
+
+First, we need to clone the repository that container the necessary scripts and files to work with the board.
+
+```sh
+git clone --recurse-submodules https://github.com/fredowski/dtsoc.git
+```
+
+Navigate to the directory of the repository.
+
+```sh
+cd dtsoc
+```
+
+Now, we need to set up the environment variables. You can do this by sourcing the `activate.sh` script.
+
+```sh
+source activate.sh
+```
+
+### Quartus Project
+
+To create a Quartus project, fallowing commands can be used.
+
+```sh
+make qip
+make qpf
+make compile
+make rbf
+```
+
+You can now open the Quartus project by running `quartus de1_soc_top.qpf`.
+
+### Linux Kernel
+
+The Linux kernel can be compiled by running the fallowing commands.
+
+```sh
+make kernel
+make rootfs
+```
+
+There is two ways to flash the Linux kernel to the board, using the SD Card with U-Boot or programming it directly through USB Blaster.
+
+#### SD Card with U-Boot
+
+Start by building the U-Boot.
+
+```sh
+make uboot
+```
+
+We can now format the SD Card and write the bootloader and kernel to it.
+
+```sh
+./format_sdcard.sh dev/sdX
+make sdcard
+```
+
+<Aside type="danger">
+    Make sure to replace `sdX` with the correct device name of your SD Card. All data will be lost if wrong device is selected. You have been warned.
+
+    You can find the device name by running `lsblk`.
+</Aside>
+
+#### USB Blaster
+
+This method is the default setup. You can Flash the kernel to the board through Quartus.
+
+## See also
+
+- https://github.com/fredowski/dtsoc
+- https://hs-augsburg.de/homes/beckmanf/dokuwiki/doku.php?id=ubuntu_virtual_cae_system
