@@ -28,7 +28,7 @@ It is recommended to use Debian Linux for the development of the project as the 
 If you are already using a Linux as your main OS, you can use Distrobox to create a Debian container. The Distrobox makes it easy to integrate GUI applications with the host OS. It also tightly integrates the container with the host OS. You can find the installation instructions on the [official Distrobox website](https://distrobox.it/). Here is a quick guide for Arch Linux.
 
 <Steps>
-    1. Configure a containerization system like [Podman](https://wiki.archlinux.org/title/Podman) or Docker.
+    1. Configure a containerization system like [Podman](https://wiki.archlinux.org/title/Podman) or [Docker](https://wiki.archlinux.org/title/Docker).
 
     2. Install Distrobox.
 
@@ -130,7 +130,7 @@ sudo apt install ghdl gtkwave
 
 Now that you have installed all the necessary tools, we can start setting up the necessary bits to be able to develop for the board.
 
-First, we need to clone the repository that container the necessary scripts and files to work with the board.
+First, we need to clone the repository that contains the necessary scripts and files to work with the board.
 
 ```sh
 git clone --recurse-submodules https://github.com/fredowski/dtsoc.git
@@ -183,7 +183,7 @@ make uboot
 We can now format the SD Card and write the bootloader and kernel to it.
 
 ```sh
-./format_sdcard.sh dev/sdX
+./format_sdcard.sh /dev/sdX
 make sdcard
 ```
 
