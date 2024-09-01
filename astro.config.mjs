@@ -26,6 +26,7 @@ export default defineConfig({
 			customCss: [
 				'@fontsource-variable/inter-tight',
 				'@fontsource-variable/roboto-mono',
+				'./src/styles/kbd.css',
 			],
 			components: {
 				PageTitle: './src/components/PageTitle.astro',
