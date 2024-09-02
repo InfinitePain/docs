@@ -39,7 +39,7 @@ The ESP-IDF is the official development framework for the ESP32 SoCs. It is base
         </Tabs>
 
         <Aside type="note">
-            CMake version 3.20 or later is required. You can check the version with `cmake --version`. If you have an older version, you should install it manually.
+            CMake version 3.16 or later is required. You can check the version with `cmake --version`. If you have an older version, you should install it manually.
         </Aside>
 
     2. Clone the ESP-IDF repository.
@@ -47,7 +47,7 @@ The ESP-IDF is the official development framework for the ESP32 SoCs. It is base
         ```sh
         mkdir -p ~/dev/embedded/frameworks/ESP-IDF
         cd ~/dev/embedded/frameworks/ESP-IDF
-        git clone -b v5.3 --recursive https://github.com/espressif/esp-idf.git
+        git clone -b v4.4.8 --recursive https://github.com/espressif/esp-idf.git
         ```
 
         <Aside type="note">
@@ -72,6 +72,18 @@ The ESP-IDF is the official development framework for the ESP32 SoCs. It is base
                 ```
             </TabItem>
         </Tabs>
+
+        <Aside type="note">
+            Using a custom path for the tools like above is optional. This only allows you to have multiple versions of the tools installed side by side. But if you do use a custom path this should be added to the environment variables as well. This can be done simply by adding the variable to export script before the anything else. For example:
+
+            ```txt
+            ...
+            export IDF_TOOLS_PATH='$HOME/dev/embedded/frameworks/ESP-IDF/v5.3/espressif'
+            __main && __enable_autocomplete
+            __cleanup $?
+            ...
+            ```
+        </Aside>
 
     4. Set up the environment variables.
 
