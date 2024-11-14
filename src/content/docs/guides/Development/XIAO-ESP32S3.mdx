@@ -45,9 +45,9 @@ The ESP-IDF is the official development framework for the ESP32 SoCs. It is base
     2. Clone the ESP-IDF repository.
 
         ```sh
-        mkdir -p ~/dev/embedded/frameworks/ESP-IDF
-        cd ~/dev/embedded/frameworks/ESP-IDF
-        git clone -b v4.4.8 --recursive https://github.com/espressif/esp-idf.git
+        mkdir -p ~/dev/embedded/frameworks/ESP-IDF/v5.1.4
+        cd ~/dev/embedded/frameworks/ESP-IDF/v5.1.4
+        git clone -b v5.1.4 --recursive https://github.com/espressif/esp-idf.git
         ```
 
         <Aside type="note">
@@ -60,15 +60,15 @@ The ESP-IDF is the official development framework for the ESP32 SoCs. It is base
             <TabItem label="Bash and Zsh">
                 ```sh
                 cd esp-idf
-                export IDF_TOOLS_PATH="$HOME/dev/embedded/frameworks/ESP-IDF/espressif"
-                ./install.sh esp32s3
+                export IDF_TOOLS_PATH="$HOME/dev/embedded/frameworks/ESP-IDF/v5.1.4/espressif"
+                ./install.sh esp32 esp32s3
                 ```
             </TabItem>
             <TabItem label="fish">
                 ```sh
                 cd esp-idf
-                set -x IDF_TOOLS_PATH "$HOME/dev/embedded/frameworks/ESP-IDF/espressif"
-                ./install.fish esp32s3
+                set -x IDF_TOOLS_PATH "$HOME/dev/embedded/frameworks/ESP-IDF/v5.1.4/espressif"
+                ./install.fish esp32 esp32s3
                 ```
             </TabItem>
         </Tabs>
@@ -78,7 +78,7 @@ The ESP-IDF is the official development framework for the ESP32 SoCs. It is base
 
             ```txt
             ...
-            export IDF_TOOLS_PATH='$HOME/dev/embedded/frameworks/ESP-IDF/v5.3/espressif'
+            export IDF_TOOLS_PATH='$HOME/dev/embedded/frameworks/ESP-IDF/v5.1.4/espressif'
             __main && __enable_autocomplete
             __cleanup $?
             ...
@@ -115,7 +115,7 @@ You can build the firmware for the board with the fallowing command.
 <Tabs syncKey="PROJ_PROFILE">
     <TabItem label="Debug">
         ```sh
-        idf.py @profiles/debug/debug build
+        idf.py -B build/debug -DLPRD_DEBUG=ON build
         ```
     </TabItem>
     <TabItem label="Release">
@@ -134,12 +134,12 @@ You can flash the firmware to the board with the fallowing command.
 <Tabs syncKey="PROJ_PROFILE">
     <TabItem label="Debug">
         ```sh
-        idf.py @profiles/debug/debug flash
+        idf.py -B build/debug -DLPRD_DEBUG=ON flash
         ```
     </TabItem>
     <TabItem label="Release">
         ```sh
-        idf.py @profiles/debug/release flash
+        idf.py -B build/release -DLPRD_DEBUG=OFF flash
         ```
     </TabItem>
 </Tabs>
@@ -151,12 +151,12 @@ You can monitor the output of the board with the fallowing command
 <Tabs syncKey="PROJ_PROFILE">
     <TabItem label="Debug">
         ```sh
-        idf.py @profiles/debug/debug monitor
+        idf.py -B build/debug -DLPRD_DEBUG=ON monitor
         ```
     </TabItem>
     <TabItem label="Release">
         ```sh
-        idf.py @profiles/debug/release monitor
+        idf.py -B build/release -DLPRD_DEBUG=OFF monitor
         ```
     </TabItem>
 </Tabs>
@@ -169,12 +169,12 @@ You can clean the build with the fallowing command.
 <Tabs syncKey="PROJ_PROFILE">
     <TabItem label="Debug">
         ```sh
-        idf.py @profiles/debug/debug fullclean
+        idf.py -B build/debug -DLPRD_DEBUG=ON fullclean
         ```
     </TabItem>
     <TabItem label="Release">
         ```sh
-        idf.py @profiles/debug/release fullclean
+        idf.py -B build/release -DLPRD_DEBUG=OFF fullclean
         ```
     </TabItem>
 </Tabs>
