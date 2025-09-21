@@ -85,7 +85,14 @@ options nvidia "NVreg_DynamicPowerManagement=0x02"
 
 Alternatively, you can install nvidia-prime-rtd3pm(AUR) which provides these two configuration files.
 
-We also need to enable `nvidia-persistenced.service` to avoid the kernel tearing down the device state whenever the NVIDIA device resources are no longer in use.
+We also need to enable the NVIDIA services to avoid the kernel tearing down the device state whenever the NVIDIA device resources are no longer in use and to handle suspend/resume functionality:
+
+```sh
+sudo systemctl enable nvidia-suspend.service \
+                      nvidia-hibernate.service \
+                      nvidia-resume.service \
+                      nvidia-persistenced.service
+```
 
 Even without enabling Dynamic Power Management, offload rendering of applications is required.
 

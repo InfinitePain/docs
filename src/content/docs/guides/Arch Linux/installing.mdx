@@ -4,20 +4,12 @@ description: A guide to install Arch Linux
 published: 2024-07-29
 ---
 
-import { Aside, FileTree } from '@astrojs/starlight/components';
+import { Aside, FileTree, Tabs, TabItem } from '@astrojs/starlight/components';
+import PackageSelector from '../../../../components/PackageSelector.astro';
 
-To be added to wiki:
-
-- [ ] Secure boot
-- [ ] UKI EFI boot
-- [ ] Encrypted root partition unlocked with TPM module
-
----
-
-In this guide we'll walk through how I like to install Arch Linux. This is not the only way to install Arch Linux, but this is how I like to do it. The configured system will have the fallowing features:
+In this guide we'll walk through how I like to set up Arch Linux. The configured system will have the fallowing features:
 
 - Btrfs filesystem
-- Swap partition
 - Secure boot
 - UKI EFI boot
 - Encrypted root partition unlocked with TPM module
@@ -37,82 +29,72 @@ timedatectl set-timezone Europe/Berlin
 You can change the timezone to fit what you use.
 </Aside>
 
-### Partition the Disks
-
-A UEFI system needs at least 2 partitions these are `boot` and `root`, I also like to create `swap` partition too. These can be created using `fdisk`. If you don't know which what your path to the disk you can run:
-
-```sh
-fdisk -l
-```
-
-This will list all the disks on your system. You can then select the disk you want to partition. For example if you want to partition `/dev/sda` you can run:
-
-```sh
-fdisk /dev/sda
-```
-
-To create the partitions you can run the following commands:
-
-```sh
-g    # Create a new GPT partition table
-n    # Create a new partition for the boot
-     # Press enter to use the default partition number
-     # Press enter to use the default first sector
-+1G  # Set the size of the partition
-t    # Change the partition type
-1    # Set the partition type to EFI
-
-n    # Create a new partition for the swap
-     # Press enter to use the default partition number
-     # Press enter to use the default first sector
-+24G # Set the size of the partition
-t    # Change the partition type
-19   # Set the partition type to Linux swap
-
-n    # Create a new partition for the root
-     # Press enter to use the default partition number
-     # Press enter to use the default first sector
-     # Press enter to use the default last sector (This will use the rest of the disk)
-t    # Change the partition type
-2    # Select the partition to change
-20   # Set the partition type to Linux filesystem
-
-w    # Write the changes to the disk
-```
+### Disk Setup
 
 <Aside type="danger">
-Make sure you have the correct disk selected before running these commands. You can lose data if you select the wrong disk. You are warned.
+    **Double-check your disk path before running these commands.** Wrong disk path will result in data loss.
 </Aside>
 
-### Format the Partitions
-
-After creating the partitions you need to format them. You can format the boot partition with:
+Identify your disk:
 
 ```sh
-mkfs.fat -F32 -n 'ARCH BOOT' /dev/sda1
+lsblk
 ```
 
-To format the swap partition you can run:
+<Tabs syncKey="encryption-type">
+<TabItem label="Standart" icon="open-book">
+
+**Create partitions:**
 
 ```sh
-mkswap -L 'Arch Swap' /dev/sda2
+echo -e "label: gpt\n,512M,U\n,8G,S\n,,L" | sfdisk /dev/nvme0n1
 ```
 
-To format the root partition to btrfs you can run:
+This creates:
+- 512M EFI boot partition
+- 8G swap partition  
+- Remaining space for Linux filesystem
+
+**Format partitions:**
 
 ```sh
-mkfs.btrfs -L 'Arch OS' /dev/sda3
+mkfs.fat -F32 -n 'ARCH BOOT' /dev/nvme0n1p1
+mkswap -L 'Arch Swap' /dev/nvme0n1p2
+mkfs.btrfs -L 'Arch OS' /dev/nvme0n1p3
 ```
 
-<Aside type="note">
-Change `/dev/sda1`, `/dev/sda2` and `/dev/sda3` to the path of your boot, swap and root partitions.
-</Aside>
+</TabItem>
+<TabItem label="Encrypted" icon="seti:lock">
 
+**Create partitions for encryption:**
 
-#### Setting up Btrfs
+```sh
+echo -e "label: gpt\n,512M,U\n,8G,L\n,,L" | sfdisk /dev/nvme0n1
+```
+
+**Set up LUKS encryption:**
+
+```sh
+cryptsetup luksFormat -v -s 512 -h sha512 --type luks2 /dev/nvme0n1p2
+cryptsetup luksFormat -v -s 512 -h sha512 --type luks2 /dev/nvme0n1p3
+cryptsetup open /dev/nvme0n1p2 Arch-Swap
+cryptsetup open /dev/nvme0n1p3 Arch-OS
+```
+
+**Format encrypted partitions:**
+
+```sh
+mkfs.fat -F32 -n 'ARCH BOOT' /dev/nvme0n1p1
+mkswap -L 'Arch Swap' /dev/mapper/Arch-Swap  
+mkfs.btrfs -L 'Arch OS' /dev/mapper/Arch-OS
+```
+
+</TabItem>
+</Tabs>
+
+### Setting up Btrfs
 
 It is recommended to create subvolumes for the root partition. An example layout is:
-
 
 <FileTree>
 - @ mounted at /
@@ -123,60 +105,87 @@ It is recommended to create subvolumes for the root partition. An example layout
   - @nocow mounted at /nocow
 </FileTree>
 
-To create these subvolumes you need to mount the root partition and run:
+<Tabs syncKey="encryption-type">
+<TabItem label="Standart" icon="open-book">
 
 ```sh
-mount /dev/sda3 /mnt
+mount /dev/nvme0n1p3 /mnt
 btrfs subvolume create /mnt/@
 btrfs subvolume create /mnt/@home
 btrfs subvolume create /mnt/@log
 btrfs subvolume create /mnt/@pkg
 btrfs subvolume create /mnt/@snapshots
 btrfs subvolume create /mnt/@nocow
-```
-
-After creating the subvolumes unmount the root partition for the next steps.
-
-```sh
 umount /mnt
 ```
 
-### Mount the Filesystems
-
-Now you can mount the partitions to the correct directories:
+</TabItem>
+<TabItem label="Encrypted" icon="seti:lock">
 
 ```sh
-mount -o subvol=@,ssd,compress=zstd:2 /dev/sda3 /mnt
-mkdir -p /mnt/{boot,home,var/{log,cache/pacman},.snapshots,nocow}
-mount -o subvol=@home,compress=zstd:2 /dev/sda3 /mnt/home
-mount -o subvol=@log,compress=zstd:2 /dev/sda3 /mnt/var/log
-mount -o subvol=@pkg,compress=zstd:2 /dev/sda3 /mnt/var/cache/pacman
-mount -o subvol=@snapshots,compress=zstd:2 /dev/sda3 /mnt/.snapshots
-mount -o subvol=@nocow,nodatacow /dev/sda3 /mnt/nocow
-mount /dev/sda1 /mnt/boot
-
-# Enable swap
-swapon /dev/sda2
+mount /dev/mapper/Arch-OS /mnt
+btrfs subvolume create /mnt/@
+btrfs subvolume create /mnt/@home
+btrfs subvolume create /mnt/@log
+btrfs subvolume create /mnt/@pkg
+btrfs subvolume create /mnt/@snapshots
+btrfs subvolume create /mnt/@nocow
+umount /mnt
 ```
 
-<Aside type="note">
-Change `/dev/sda1`, `/dev/sda2` and `/dev/sda3` to the path of your boot and root partitions.
-</Aside>
+</TabItem>
+</Tabs>
+
+### Mount the Filesystems
+
+<Tabs syncKey="encryption-type">
+<TabItem label="Standart" icon="open-book">
+
+```sh
+mount -o subvol=@,ssd,compress=zstd:2 /dev/nvme0n1p3 /mnt
+mkdir -p /mnt/{boot,efi/EFI/Linux,home,var/{log,cache/pacman},.snapshots,nocow}
+mount -o subvol=@home,compress=zstd:2 /dev/nvme0n1p3 /mnt/home
+mount -o subvol=@log,compress=zstd:2 /dev/nvme0n1p3 /mnt/var/log
+mount -o subvol=@pkg,compress=zstd:2 /dev/nvme0n1p3 /mnt/var/cache/pacman
+mount -o subvol=@snapshots,compress=zstd:2 /dev/nvme0n1p3 /mnt/.snapshots
+mount -o subvol=@nocow,nodatacow /dev/nvme0n1p3 /mnt/nocow
+mount /dev/nvme0n1p1 /mnt/efi
+swapon /dev/nvme0n1p2
+```
+
+</TabItem>
+<TabItem label="Encrypted" icon="seti:lock">
+
+```sh
+mount -o subvol=@,ssd,compress=zstd:2 /dev/mapper/Arch-OS /mnt
+mkdir -p /mnt/{boot,efi/EFI/Linux,home,var/{log,cache/pacman},.snapshots,nocow}
+mount -o subvol=@home,compress=zstd:2 /dev/mapper/Arch-OS /mnt/home
+mount -o subvol=@log,compress=zstd:2 /dev/mapper/Arch-OS /mnt/var/log
+mount -o subvol=@pkg,compress=zstd:2 /dev/mapper/Arch-OS /mnt/var/cache/pacman
+mount -o subvol=@snapshots,compress=zstd:2 /dev/mapper/Arch-OS /mnt/.snapshots
+mount -o subvol=@nocow,nodatacow /dev/mapper/Arch-OS /mnt/nocow
+mount /dev/nvme0n1p1 /mnt/efi
+swapon /dev/mapper/Arch-Swap
+```
+
+</TabItem>
+</Tabs>
 
 <Aside type="note">
-The `compress=zstd:2` option is used to compress the subvolumes. You can change the compression level to fit your needs or remove it if you dont want to compress the subvolumes.
+The `compress=zstd:2` option compresses the subvolumes. Adjust compression level or remove if not desired.
 </Aside>
 
 This should result in the following mount points:
 
 <FileTree>
 - /mnt
-   - boot/
-   - boot/
+   - efi/
+     - EFI/
+       - Linux/
    - home/
    - var/
-     - log
-     - cache
+     - log/
+     - cache/
        - pacman/
    - .snapshots/
    - nocow/
@@ -190,17 +199,20 @@ Start with updating the mirrors:
 reflector --latest 5 --protocol http --protocol https --sort rate --save /etc/pacman.d/mirrorlist
 ```
 
-Now you can install the base system:
+### Install Base System
+
+Install the essential base packages:
 
 ```sh
-pacstrap -K /mnt base linux linux-firmware linux-lts zsh nano sudo networkmanager networkmanager-openvpn network-manager-applet openvpn firewalld pacman-contrib git base-devel less curl wget reflector btop flatpak pipewire pipewire-audio pipewire-pulse usbutils ntfs-3g python-pip python-pipx unzip zstd ansible imagemagick fzf docker amd-ucode
+pacstrap -K /mnt base linux linux-firmware sudo git base-devel rust
 ```
 
-This will install some basic packages along with the linux kernel itself. Feel free to add or remove packages from the list to fit your needs.
-
-<Aside type="note">
-Change `amd-ucode` to `intel-ucode` if you are using an Intel CPU.
-</Aside>
+These packages provide:
+- `base`: Minimal base system
+- `linux`: Linux kernel 
+- `linux-firmware`: Hardware firmware
+- `sudo`: Allows privilege escalation for administrative tasks
+- `git`, `base-devel`, `rust`: Required for building AUR packages later
 
 ## Configuring the System
 
@@ -210,23 +222,45 @@ First start by generating the `fstab`:
 genfstab -U /mnt >> /mnt/etc/fstab
 ```
 
+Configure basic system settings with systemd-firstboot:
+
+```sh
+systemd-firstboot --root /mnt \
+  --hostname=emirhans-laptop \
+  --locale=en_US.UTF-8 \
+  --keymap=us \
+  --timezone=Europe/Berlin
+```
+
 Now you can chroot into the new system:
 
 ```sh
 arch-chroot /mnt
 ```
 
-### Setting up the System
+### Configure Pacman
 
-Here you can set the timezone, locale, hostname and enable the services you need:
+First, configure pacman settings and enable multilib repository:
 
 ```sh
-# Set the timezone
-ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime
-hwclock --systohc
+sed -i 's/#Color/Color/' /etc/pacman.conf
+sed -i 's/#VerbosePkgLists/VerbosePkgLists/' /etc/pacman.conf
+sed -i 's/ParallelDownloads = 5/ParallelDownloads = 10/' /etc/pacman.conf
+sed -i '/^\[options\]/a ILoveCandy' /etc/pacman.conf
 
-# Set the locale
-echo 'LANG=en_US.UTF-8' > /etc/locale.conf
+# Enable multilib repository
+sed -i '/^#\[multilib\]/,/^#Include.*mirrorlist/ s/^#//' /etc/pacman.conf
+
+# Update package database
+pacman -Sy
+```
+
+### Setting up the System
+
+Generate additional locales and set up users:
+
+```sh
+# Generate additional locales
 echo 'de_DE.UTF-8 UTF-8' >> /etc/locale.gen
 echo 'en_DK.UTF-8 UTF-8' >> /etc/locale.gen
 echo 'en_GB.UTF-8 UTF-8' >> /etc/locale.gen
@@ -234,19 +268,7 @@ echo 'en_IE.UTF-8 UTF-8' >> /etc/locale.gen
 echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen
 echo 'tr_TR.UTF-8 UTF-8' >> /etc/locale.gen
 locale-gen
-
-# Set the hostname
-echo 'emirhans-laptop' > /etc/hostname
-
-# Enable NetworkManager
-systemctl enable NetworkManager
-# Enable bluetooth if you have it
-systemctl enable bluetooth.service
 ```
-
-<Aside type="note">
-Change `Europe/Berlin` to your timezone and `emirhans-laptop` to your hostname.
-</Aside>
 
 ### Setting up Users
 
@@ -263,21 +285,15 @@ This will prompt you to enter a new password for the root user. After entering t
 groupadd -r storage
 groupadd -r power
 groupadd -r plugdev
-useradd -m -G wheel,storage,power,plugdev -s /bin/zsh emirhan
+useradd -m -G wheel,storage,power,plugdev -s /bin/bash emirhan
 # Set the password for the user
 passwd emirhan
 ```
 
-In order to allow the user to use `sudo` you need to edit the sudoers file:
+Enable sudo for the wheel group:
 
 ```sh
-EDITOR=nano visudo
-```
-
-Add the fallowing line to the file:
-
-```text frame="terminal" title="/etc/sudoers"
-%wheel ALL=(ALL) ALL
+sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 ```
 
 Now we can switch to the new user for the rest of the installation:
@@ -290,54 +306,59 @@ su emirhan
 Change `emirhan` to your username.
 </Aside>
 
-<Aside type="note">
-I like to configure my sudoers per user, and use ansible to manage the sudoers file which can be found in my [dotfiles repository](https://github.com/InfinitePain/Dotfiles).
-</Aside>
+### Optimize Build Configuration
 
-### Configure Reflector
+Configure makepkg to use all available CPU cores for faster compilation:
 
-Configure reflector to use https and sort the mirrors by rate and save the fastest 5 mirrors:
+```sh
+sudo sed -i 's/#MAKEFLAGS="-j2"/MAKEFLAGS="-j$(nproc)"/' /etc/makepkg.conf
+```
 
-```text frame="terminal" title="/etc/xdg/reflector/reflector.conf"
+This replaces the default `#MAKEFLAGS="-j2"` with `MAKEFLAGS="-j$(nproc)"` to utilize all available CPU cores.
+
+### Install AUR Helper
+
+Install `paru` to manage AUR packages:
+
+```sh
+cd $(mktemp -d)
+git clone https://aur.archlinux.org/paru.git
+cd paru
+makepkg -si
+```
+
+### Install Additional Packages
+
+Now that we have the AUR helper set up, install additional packages and AUR packages using the package selector:
+
+<PackageSelector/>
+
+### Configure Installed Packages
+
+Configure reflector and enable services:
+
+```sh
+# Configure reflector
+sudo tee /etc/xdg/reflector/reflector.conf > /dev/null <<EOF
 --save /etc/pacman.d/mirrorlist
 --protocol https
 --latest 5
 --sort rate
-```
+EOF
 
-Now you can enable the reflector timer to update the mirrors periodically:
+# Enable reflector timer
+sudo systemctl enable reflector.timer
 
-```sh
-systemctl enable reflector.timer
-```
+# Enable services (after packages are installed)
+sudo systemctl enable NetworkManager
+sudo systemctl enable bluetooth.service
 
-### Configure Pacman
+# Enable display manager (choose one based on what you installed)
+sudo systemctl enable sddm.service    # For SDDM (KDE-based)
+# sudo systemctl enable gdm.service   # For GDM (GNOME-based)
 
-Add fallowing setting under the `[options]` section in pacman configuration file:
-
-```text frame="terminal" title="/etc/pacman.conf"
-[options]
-Color
-VerbosePkgLists
-ParallelDownloads = 10
-ILoveCandy
-```
-
-Enable the `multilib` repository by uncommenting the fallowing lines in the pacman configuration file:
-
-```text frame="terminal" title="/etc/pacman.conf"
-[multilib]
-Include = /etc/pacman.d/mirrorlist
-```
-
-### Install AUR Helper
-
-You can install `paru` to manage AUR packages:
-
-```sh
-git clone https://aur.archlinux.org/paru.git
-cd paru
-makepkg -si
+# Change shell to zsh (if zsh was installed)
+chsh -s /bin/zsh
 ```
 
 ### Configuring the Bootloader
@@ -345,13 +366,6 @@ makepkg -si
 
 There are multiple bootloaders you can use. The most common ones are [GRUB](/guides/arch-linux/grub) and [systemd-boot](/guides/arch-linux/systemd-boot). You can find documentation on how to configure these bootloaders also in my wiki under the `Arch Linux` section.  We are going to configure BIOS to boot directly into linux kernel. But it is recommended to configure some bootloader as a fallback option or in case your motherboard does not support booting directly into the kernel.
 
-#### Playmouth
-
-Plymouth is a splash screen that can be used to hide the boot process, essentially making the boot process like the one on Windows. There are various themes you can use with plymouth; I like to use the <span><a href="https://aur.archlinux.org/packages/plymouth-theme-archlinux" target="_blank">plymouth-theme-archlinux</a></span><sup><small>AUR</small></sup>.
-
-```sh
-paru -S plymouth plymouth-theme-archlinux
-```
 
 ### Setting up Firewall
 

@@ -1,0 +1,433 @@
+---
+import { Code } from '@astrojs/starlight/components';
+
+interface Props {
+    preSelected?: string[];
+    encryptionMode?: boolean;
+}
+
+const { preSelected = ['essentials', 'shell-tools', 'build-tools', 'amd', 'secure-boot', 'development', 'multimedia', 'filesystem', 'network', 'kde', 'amd-gpu', 'razer', 'printing', 'utilities', 'fonts', 'media', 'text-editors', 'office-email', '1password', "epson"], encryptionMode = false } = Astro.props;
+
+const packageGroups = [
+    {
+        name: 'essentials',
+        label: 'Essential packages',
+        packages: [
+            'vi', 'less', 'curl', 'wget', 'nano', 'util-linux',
+            'usbutils', 'reflector', 'pacman-contrib'
+        ],
+        description: 'Core system packages required for basic functionality'
+    },
+    {
+        name: 'shell-tools',
+        label: 'Shell Tools',
+        packages: [
+            'zsh', 'btop', 'fastfetch', 'fzf'
+        ],
+        description: 'Enhanced shell experience and system information tools'
+    },
+    {
+        name: 'build-tools',
+        label: 'Build Tools',
+        packages: [
+            'linux-headers', 'python-pipx'
+        ],
+        description: 'Additional development tools'
+    },
+    {
+        name: 'intel',
+        label: 'Intel CPU',
+        packages: ['intel-ucode'],
+        description: 'Intel CPU microcode updates'
+    },
+    {
+        name: 'amd',
+        label: 'AMD CPU',
+        packages: ['amd-ucode'],
+        description: 'AMD CPU microcode updates'
+    },
+    {
+        name: 'encryption',
+        label: 'Disk Encryption',
+        packages: ['cryptsetup', 'lvm2'],
+        description: 'LUKS disk encryption support'
+    },
+    {
+        name: 'secure-boot',
+        label: 'Secure Boot',
+        packages: [
+            'sbctl'
+        ],
+        description: 'Secure boot management tools'
+    },
+    {
+        name: 'development',
+        label: 'Development Tools',
+        packages: [
+            'ansible', 'python-pip', 'docker'
+        ],
+        description: 'Development and system administration tools'
+    },
+    {
+        name: 'multimedia',
+        label: 'Multimedia Support',
+        packages: [
+            'pipewire', 'pipewire-audio', 'pipewire-pulse', 'imagemagick',
+            'libva-utils', 'vdpauinfo'
+        ],
+        description: 'Audio, video, and multimedia codec support'
+    },
+    {
+        name: 'filesystem',
+        label: 'Filesystem Support',
+        packages: [
+            'btrfs-progs', 'dosfstools', 'unzip', 'zstd', 'ntfs-3g'
+        ],
+        description: 'Filesystem utilities and compression tools'
+    },
+    {
+        name: 'network',
+        label: 'Network Tools',
+        packages: [
+            'networkmanager', 'network-manager-applet', 'openvpn',
+            'networkmanager-openvpn', 'flatpak', 'firewalld', 'bind'
+        ],
+        description: 'Network management and VPN support'
+    },
+    {
+        name: 'gnome',
+        label: 'GNOME Desktop',
+        packages: [
+            'gnome', 'gnome-tweaks', 'gnome-tweaks', 'gdm', 'gnome-tweaks',
+            'gnome-extra', 'xdg-desktop-portal', 'xdg-desktop-portal-gnome',
+            'gnome-browser-connector', 'xorg-xwayland', 'xdg-utils', 'spectacle',
+            'power-profiles-daemon', 'loupe', 'aur/zen-browser-bin', 'kitty'
+        ],
+        description: 'GNOME desktop environment'
+    },
+    {
+        name: 'kde',
+        label: 'KDE Plasma',
+        packages: [
+            'plasma', 'sddm', 'colord-kde', 'dolphin-plugins', 'kcharselect',
+            'kcron', 'kdegraphics-thumbnailers', 'kdenetwork-filesharing',
+            'kdesdk-thumbnailers', 'kdialog', 'kfind', 'khelpcenter', 'konsole',
+            'kio-admin', 'kio-gdrive', 'kio-zeroconf', 'krfb', 'kjournald',
+            'kio-extras', 'ksystemlog', 'svgpart', 'maliit-keyboard',
+            'sweeper', 'flatpak-kcm', 'xorg-xwayland', 'xdg-utils', 'spectacle',
+            'power-profiles-daemon', 'loupe', 'aur/zen-browser-bin', 'kitty'
+        ],
+        description: 'KDE Plasma desktop environment'
+    },
+    {
+        name: 'hyprland',
+        label: 'Hyprland',
+        packages: [
+            'hyprland', 'xdg-desktop-portal-hyprland', 'loupe', 'kitty',
+            'wireplumber', 'egl-wayland', 'swaync', 'wireplumber',
+            'xdg-desktop-portal-gtk', 'polkit-kde-agent', 'qt5-wayland',
+            'qt6-wayland', 'dolphin', 'qt5-wayland qt6-wayland', 'konsole',
+            'kanshi', 'xdg-utils', 'spectacle', 'power-profiles-daemon',
+            'aur/zen-browser-bin'
+        ],
+        description: 'Hyprland tiling window manager'
+    },
+    {
+        name: 'intel-gpu',
+        label: 'Intel GPU Drivers',
+        packages: [
+            'mesa', 'lib32-mesa', 'vulkan-intel', 'lib32-vulkan-intel',
+            'intel-media-driver',  'libvdpau-va-gl', 'vpl-gpu-rt', 'nvtop'
+        ],
+        description: 'Open-source Intel graphics drivers'
+    },
+    {
+        name: 'amd-gpu',
+        label: 'AMD GPU Drivers',
+        packages: [
+            'mesa', 'lib32-mesa', 'vulkan-radeon', 'lib32-vulkan-radeon',
+            'xf86-video-amdgpu', 'libvdpau-va-gl', 'nvtop'
+        ],
+        description: 'Open-source AMD graphics drivers'
+    },
+    {
+        name: 'nvidia',
+        label: 'NVIDIA Drivers',
+        packages: [
+            'nvidia-open', 'nvidia-utils', 'lib32-nvidia-utils',
+            'nvidia-settings', 'libva-nvidia-driver', 'libva-utils', 'nvtop'
+        ],
+        description: 'Open-source NVIDIA graphics drivers'
+    },
+    {
+        name: 'razer',
+        label: 'Razer Devices',
+        packages: [
+            'openrazer-daemon', 'aur/polychromatic'
+        ],
+        description: 'Support for Razer peripherals and RGB lighting control'
+    },
+    {
+        name: 'printing',
+        label: 'Printing Support',
+        packages: [
+            'cups', 'system-config-printer'
+        ],
+        description: 'Printer support and configuration tools'
+    },
+    {
+        name: 'utilities',
+        label: 'System Utilities',
+        packages: [
+            'ddcutil', 'plymouth'
+        ],
+        description: 'Monitor brightness control, boot splash and other system utilities'
+    },
+    {
+        name: 'fonts',
+        label: 'Fonts',
+        packages: [
+            'gsfonts', 'inter-font', 'texlive-fontsextra', 'ttf-roboto-mono-nerd',
+            'ttf-roboto', 'noto-fonts-cjk', 'noto-fonts-extra'
+        ],
+        description: 'Font packages for proper text rendering and display'
+    },
+    {
+        name: 'media',
+        label: 'Music/Media',
+        packages: [
+            'spotify-launcher', 'vlc', 'mpv'
+        ],
+        description: 'Music and video players'
+    },
+    {
+        name: 'text-editors',
+        label: 'Text Editors',
+        packages: [
+            'gnome-text-editor', 'nvim', 'visual-studio-code-bin', 'obsidian'
+        ],
+        description: 'Text editing applications and IDEs'
+    },
+    {
+        name: 'office-email',
+        label: 'Office & Email',
+        packages: [
+            'libreoffice', 'okular', 'aur/mailspring'
+        ],
+        description: 'Office suite, document viewer, and email client'
+    },
+    {
+        name: '1password',
+        label: '1Password',
+        packages: [
+            'aur/1password', 'aur/1password-cli'
+        ],
+        description: '1Password password manager and CLI tools'
+    },
+    {
+        name: 'lenovo-legion',
+        label: 'Lenovo Legion',
+        packages: [
+            'aur/lenovolegionlinux-dkms-git'
+        ],
+        description: 'Support for Lenovo Legion laptops'
+    },
+    {
+        name: "epson",
+        label: "Epson Printers",
+        packages: [
+            'aur/epson-inkjet-printer-escpr'
+        ],
+        description: "Support for Epson inkjet printers"
+    }
+];
+
+const initialSelected = [...preSelected, ...(encryptionMode ? ['encryption'] : [])];
+---
+
+<div>
+    <div style="display:flex; flex-direction:column; border: 1px solid var(--sl-color-hairline); border-radius: 0.5rem; padding: 1rem; background-color: var(--sl-color-bg-nav);">
+        <h4>📦 Customize Package Selection</h4>
+        <div id="package-selector" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+            {packageGroups.map((group) => {
+                const isSelected = initialSelected.includes(group.name);
+
+                return (
+                    <div
+                        class="package-item"
+                        style={`
+                            display: flex;
+                            align-items: center;
+                            cursor: pointer;
+                            margin: 0.25rem;
+                            padding: 0.5rem;
+                            background-color: var(--sl-color-bg);
+                            border-radius: 0.25rem;
+                            border: 1px solid var(--sl-color-hairline);
+                            transition: all 0.2s ease;
+                        `}
+                        data-group={group.name}
+                        title={`${group.description}\nPackages: ${group.packages.join(', ')}`}
+                    >
+                        <input
+                            type="checkbox"
+                            id={`pkg-${group.name}`}
+                            checked={isSelected}
+                            data-group={group.name}
+                            style="margin-right: 0.5rem;"
+                        />
+                        <label 
+                            for={`pkg-${group.name}`}
+                            style="font-size: 0.875rem; color: var(--sl-color-white); font-weight: 500; cursor: pointer; line-height: 1.25rem"
+                        >
+                            {group.label}
+                        </label>
+                    </div>
+                );
+            })}
+        </div>
+    </div>
+
+    <div id="generated-command">
+        <Code
+                code="paru -S --needed"
+                lang="sh"
+                title="Generated paru command"
+        />
+    </div>
+</div>
+
+<style>
+    .package-item:has(input:checked) {
+        background-color: var(--sl-color-accent-low) !important;
+        border: 1px solid var(--sl-color-accent) !important;
+    }
+</style>
+
+<script define:vars={{ packageGroups }}>
+    function updateCommand() {
+        const checkboxes = document.querySelectorAll('#package-selector input[type="checkbox"]:checked');
+        const selectedGroups = Array.from(checkboxes).map(cb => cb.getAttribute('data-group'));
+
+        const selectedPackages = packageGroups
+            .filter(group => selectedGroups.includes(group.name))
+            .flatMap(group => group.packages)
+            .filter((pkg, index, arr) => arr.indexOf(pkg) === index)
+            .sort();
+
+        // Format command with proper line wrapping at 80 characters
+        const baseCommand = 'paru -S --needed ';
+        const maxLineLength = 80;
+        const indentLength = 17; // spaces for continuation lines
+        const indent = ' '.repeat(indentLength);
+
+        let lines = [baseCommand];
+        let currentLine = baseCommand;
+
+        for (const pkg of selectedPackages) {
+            const addition = (currentLine === baseCommand ? '' : ' ') + pkg;
+            if ((currentLine + addition + ' \\').length > maxLineLength) {
+                lines[lines.length - 1] = currentLine + ' \\';
+                currentLine = indent + pkg;
+                lines.push(currentLine);
+            } else {
+                currentLine += addition;
+                lines[lines.length - 1] = currentLine;
+            }
+        }
+
+        const command = lines.join('\n');
+
+        // Update the code block by finding the text node with '/mnt' and replacing everything after it
+        const codeContainer = document.querySelector('#generated-command');
+        if (codeContainer) {
+            const codeElement = codeContainer.querySelector('pre code');
+            if (codeElement) {
+                // Find the text node that contains '/mnt'
+                const walker = document.createTreeWalker(
+                    codeElement,
+                    NodeFilter.SHOW_TEXT,
+                    null,
+                    false
+                );
+                
+                let node;
+                while (node = walker.nextNode()) {
+                    if (node.textContent.includes('--needed')) {
+                        // Split the command to get packages part  
+                        const packages = command.split('--needed ')[1] || '';
+                        // Replace everything after '--needed ' with just our packages
+                        node.textContent = node.textContent.split('--needed')[0] + '--needed ' + packages;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    function handleCheckboxChange(event) {
+        const groupName = event.target.getAttribute('data-group');
+
+        // CPU exclusivity
+        if (groupName === 'intel' && event.target.checked) {
+            const amdCheckbox = document.querySelector('input[data-group="amd"]');
+            if (amdCheckbox && amdCheckbox.checked) {
+                amdCheckbox.checked = false;
+            }
+        } else if (groupName === 'amd' && event.target.checked) {
+            const intelCheckbox = document.querySelector('input[data-group="intel"]');
+            if (intelCheckbox && intelCheckbox.checked) {
+                intelCheckbox.checked = false;
+            }
+        }
+
+        updateCommand();
+    }
+
+    // Check which tab is active and auto-enable/disable encryption
+    function checkTabState() {
+        const encryptionCheckbox = document.querySelector('input[data-group="encryption"]');
+        if (!encryptionCheckbox) return;
+
+        // Simple: look for active tab
+        const activeTab = document.querySelector('[role="tab"][aria-selected="true"]');
+        if (activeTab) {
+            if (activeTab.textContent.includes('Encrypted')) {
+                // Auto-enable encryption for encrypted tab
+                if (!encryptionCheckbox.checked) {
+                    encryptionCheckbox.checked = true;
+                    updateCommand();
+                }
+            } else {
+                // Auto-disable encryption for standard tab
+                if (encryptionCheckbox.checked) {
+                    encryptionCheckbox.checked = false;
+                    updateCommand();
+                }
+            }
+        }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        const checkboxes = document.querySelectorAll('#package-selector input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', handleCheckboxChange);
+        });
+
+        // Check tab state on load
+        checkTabState();
+        updateCommand();
+
+        // Listen for tab changes (simple MutationObserver)
+        const observer = new MutationObserver(() => {
+            checkTabState();
+        });
+
+        observer.observe(document.body, {
+            attributes: true,
+            attributeFilter: ['aria-selected'],
+            subtree: true
+        });
+    });
+</script>

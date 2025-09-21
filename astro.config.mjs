@@ -38,6 +38,7 @@ export default defineConfig({
 		}),
 		react(),
 	],
+	trailingSlash: 'never',
 	vite: {
 		resolve: {
 			alias: {
